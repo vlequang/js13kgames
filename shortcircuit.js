@@ -6,9 +6,13 @@
 
 
    var sound = getHash('mute')!="1";
-   var audioContext;
+   var audioContext, banAudio;
    function playMusic() {
-       audioContext = window.AudioContext ? new AudioContext : null;
+       if(!audioContext) {
+          audioContext = window.AudioContext ? new AudioContext :
+              window.webkitAudioContext ? new window.webkitAudioContext : null;
+          if(!audioContext) banAudio = true;
+       }
    }
 
    var nn = [200,300,400,500,600,800,900,1000];
@@ -20,7 +24,7 @@
    var stopMusicTimeout = null;
    var changeTune = false;
    function playNote() {
-     if(!sound) return;
+     if(!sound || banAudio) return;
      playMusic();
 
      clearTimeout(stopMusicTimeout);
@@ -41,11 +45,7 @@
               }
             }
             if(audioContext) {
-              try {
-                 osc[oscValue].connect(audioContext.destination);
-              } catch(e) {
-                 console.log(e);
-              }
+               osc[oscValue].connect(audioContext.destination);
             }
         }
         noteIndex= (noteIndex+1)%8;
