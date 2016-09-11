@@ -3,12 +3,12 @@
     Author: Vincent Le Quang
 */
 
+
+
    var sound = getHash('mute')!="1";
    var audioContext;
    function playMusic() {
-     if(!audioContext) {
-       audioContext = new AudioContext;
-     }
+       audioContext = window.AudioContext ? new AudioContext : null;
    }
 
    var nn = [200,300,400,500,600,800,900,1000];
@@ -21,8 +21,9 @@
    var changeTune = false;
    function playNote() {
      if(!sound) return;
-     clearTimeout(stopMusicTimeout);
      playMusic();
+
+     clearTimeout(stopMusicTimeout);
      if(lastRefresh-lastNote>180) {
         lastNote = lastRefresh;
         if(!notes[noteIndex] || changeTune && Math.random()<.3) {
@@ -30,14 +31,22 @@
            changeTune = false;
         }
         if(oscValue != notes[noteIndex]) {
-            if(oscValue) osc[oscValue].disconnect();
+            if(oscValue && osc[oscValue]) osc[oscValue].disconnect();
             oscValue = notes[noteIndex];
             if(!osc[oscValue]) {
-              osc[oscValue] = audioContext.createOscillator();
-              osc[oscValue].frequency.value = oscValue;
-              osc[oscValue].start(0);
+              if(audioContext) {
+                 osc[oscValue] = audioContext.createOscillator();
+                 osc[oscValue].frequency.value = oscValue;
+                 osc[oscValue].start(0);
+              }
             }
-            osc[oscValue].connect(audioContext.destination);
+            if(audioContext) {
+              try {
+              // osc[oscValue].connect(audioContext.destination);
+              } catch(e) {
+                 console.log(e);
+              }
+            }
         }
         noteIndex= (noteIndex+1)%8;
      }
@@ -59,7 +68,7 @@
       elems = getMap(lvl);
       levelStart = 0;
       lastRefresh = 0;
-      setTimeout(checkConnect,100);
+      setTimeout(checkConnect,1000);
       if(level) {
        setHash('level',level);
       }
@@ -96,7 +105,7 @@
      if(index>=maps.length) {
          return null;
      }
-     var lines = maps[index].innerHTML.split(String.fromCharCode(10)).filter(line=>line.trim()!="");
+     var lines = maps[index].innerHTML.split(String.fromCharCode(10)).filter(function(line) { return line.trim()!="";});
      for(var y=0;y<lines.length;y++) {
         for(var x=0;x<lines[y].length/2;x++) {
            var cell = lines[y].substr(x*2,2);
@@ -235,8 +244,8 @@
               refreshCell(x,y);
            }
          }
-         refreshElems(elems.filter(elem => elem.floor));
-         refreshElems(elems.filter(elem => !elem.floor));
+         refreshElems(elems.filter(function(elem) {return elem.floor;}));
+         refreshElems(elems.filter(function(elem) {return !elem.floor;}));
 
          fadeTitle();
          refreshPad();
@@ -397,7 +406,7 @@
 
       if(!door.block) {
          var rand = parseInt(Math.random()*250);
-         ctx.fillStyle= `rgb(255,${rand},30)`;
+         ctx.fillStyle= "rgb(255,"+rand+",30)";
          ctx.beginPath();
          ctx.moveTo(x+cellSize/2, y - cellSize*rand/500);
          ctx.lineTo(x+cellSize/2-cellSize/5, y-cellSize/4 - cellSize*rand/500);
@@ -421,7 +430,7 @@
    }
 
    function getElemsAt(x,y) {
-      return elems.filter((elem) => Math.round(elem.x)==x && Math.round(elem.y)==y );
+      return elems.filter(function(elem) { return Math.round(elem.x)==x && Math.round(elem.y)==y;} );
    }
    
    function canGo(hero, x, y, pushed) {
@@ -554,18 +563,19 @@
         }
 
         if(!hero.exit) {
-           var doors = getElemsAt(Math.round(hero.x),Math.round(hero.y)).filter(elem => elem.type=='door');
+           var doors = getElemsAt(Math.round(hero.x),Math.round(hero.y)).filter(function(elem) {return elem.type=='door';});
            if(doors.length>0) {
               hero.exit = lastRefresh;
            }
         }
 
         var a= hero.exit? Math.sqrt(Math.max (0,1-(lastRefresh-hero.exit)/250)) :1;
-        ctx.fillStyle = '#888888';
-        ctx.beginPath();
-        ctx.ellipse(hero.x*cellSize + cellSize/2,hero.y*cellSize + (cellSize/2)*a + (cellSize-cellSize/3)*(1-a) + heroSize*a*.8,heroSize*a*.9,heroSize*a/3,0,0,Math.PI*2,true);
-        ctx.fill();
-
+        if(ctx['ellipse']) {
+           ctx.fillStyle = '#888888';
+           ctx.beginPath();
+           ctx.ellipse(hero.x*cellSize + cellSize/2,hero.y*cellSize + (cellSize/2)*a + (cellSize-cellSize/3)*(1-a) + heroSize*a*.8,heroSize*a*.9,heroSize*a/3,0,0,Math.PI*2,true);
+           ctx.fill();
+        }
         ctx.strokeStyle = 'rgb(200,150,30)';
         ctx.fillStyle= 'rgb(240,240,30)';
         ctx.lineWidth = heroSize/6;
@@ -711,7 +721,7 @@
          elem.connected = lastRefresh;
       }
       var surroundingElems = elems.filter(
-         elem2 => elem2.circuit && Math.abs(elem2.x-elem.x)+Math.abs(elem2.y-elem.y)==1
+         function(elem2) {return elem2.circuit && Math.abs(elem2.x-elem.x)+Math.abs(elem2.y-elem.y)==1; }
       );
       for(var i=0;i<surroundingElems.length;i++) {
          var surroundingElem = surroundingElems[i];
@@ -738,7 +748,7 @@
    var bslash = String.fromCharCode(92);
    function getHash(prop) {
       var lvl = 0;
-      var match = location.hash.match(new RegExp(`${bslash}b${prop}=(${bslash}d+)`));
+      var match = location.hash.match(new RegExp(bslash+"b"+prop+"="+"("+bslash+"d+)"));
       if(!match) return null;
       return parseInt(match[match.length-1]);
    }
@@ -746,9 +756,9 @@
    function setHash(prop,value) {
       var hash = null;
       if(getHash(prop)!==null) {
-        hash = location.hash.replace(new RegExp(`${bslash}b${prop}=${bslash}d+`),value?`${prop}=${value}`:'');
+        hash = location.hash.replace(new RegExp(bslash+"b"+prop+"="+bslash+"d+"),value?prop+"="+value:'');
       } else {
-        hash = location.hash=="#" ? `${prop}=${value}` : location.hash + `&${prop}=${value}`;
+        hash = location.hash=="#" ? prop+"="+value : location.hash + "&"+prop+"="+value;
       }
       hash = hash.replace(/&+/,'&');
       hash = hash.replace(/&$/,'');
@@ -770,10 +780,10 @@ function checkRetina (){
     return false;
 }
 
-   window.onfocus = ()=> {active = true; refreshView();}
-   window.onblur = ()=> {active = false;}
+   window.onfocus = function() {active = true; refreshView();}
+   window.onblur = function() {active = false;}
    window.onkeyup =  window.onkeydown = 
-      e=> { 
+      function(e) { 
          if(!e)e=event;
          if(e.type=="keydown") {
             for(k in key) key[k] = false;
@@ -810,7 +820,7 @@ function checkRetina (){
         }
      }
    }
-   document.addEventListener('touchend',e=> {
+   document.addEventListener('touchend',function(e) {
        key[37]=key[38]=key[39]=key[40]=false;
    });
 document.getElementById('controls-portrait').addEventListener('touchstart',touchMe);
