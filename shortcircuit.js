@@ -42,7 +42,7 @@
             }
             if(audioContext) {
               try {
-              // osc[oscValue].connect(audioContext.destination);
+                 osc[oscValue].connect(audioContext.destination);
               } catch(e) {
                  console.log(e);
               }
