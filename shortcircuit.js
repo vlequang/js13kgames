@@ -4,8 +4,7 @@
 */
 
 
-
-   var sound = getHash('mute')!="1";
+   var sound = true;
    var audioContext, banAudio;
    function playMusic() {
        if(!audioContext) {
@@ -23,7 +22,10 @@
    var lastNote = 0;
    var stopMusicTimeout = null;
    var changeTune = false;
+   var maxLevel = 0;
+   var pink = false;
    function playNote() {
+     
      if(!sound || banAudio) return;
      playMusic();
 
@@ -65,6 +67,7 @@
 
    function setLevel(lvl) {
       level = lvl;
+      maxLevel = Math.max(level,maxLevel);
       elems = getMap(lvl);
       levelStart = 0;
       lastRefresh = 0;
@@ -75,17 +78,29 @@
    }
 
    function promptRestart() {
-      stopMusic(); 
-      if(confirm('Restart level?')) {
-         restart();
-      }
+     if(popDialog.style.display=="") {
+        popDialog.style.display = "none";
+        return;
+     }
+
+     var bottomSpace = is_touch_device() ? 30 : 60;
+     var maxRect = Math.min(window.innerWidth, window.innerHeight-bottomSpace);
+
+      popDialog.style.display = "";
+      var left = (is_touch_device()?maxRect/2:window.innerWidth/2) - popDialog.offsetWidth/2;
+      var top = (is_touch_device()?maxRect/3:window.innerHeight/2) - popDialog.offsetHeight/2;
+      popDialog.style.left = popDialog.style.posLeft = left;
+      popDialog.style.top = popDialog.style.posTop = top;
+
+      resetHeaders();
    }
 
    function resize(e) {
      var retina = isRetina;
      
+     var bottomSpace = is_touch_device() ? 30 : 60;
      var scale = retina?.5:1;
-     var maxRect = Math.min(window.innerWidth, window.innerHeight-60);
+     var maxRect = Math.min(window.innerWidth, window.innerHeight-bottomSpace);
      var goodSize = Math.min(800,Math.max(240,Math.floor(maxRect/10)*10));
      var innerSize = retina?2*goodSize:goodSize;
      if(canvas.width != innerSize) {
@@ -99,18 +114,18 @@
      }
    }
 
-   function getMap(index) {
+   function parseMap(map) {
      var elements = [];
-     var maps = document.getElementsByTagName("map");
-     if(index>=maps.length) {
-         return null;
-     }
-     var lines = maps[index].innerHTML.split(String.fromCharCode(10)).filter(function(line) { return line.trim()!="";});
+     var lines = map.split(String.fromCharCode(10)).filter(function(line) { return line.trim()!="";});
      for(var y=0;y<lines.length;y++) {
         for(var x=0;x<lines[y].length/2;x++) {
            var cell = lines[y].substr(x*2,2);
            var elem = null;
            switch(cell.charAt(0)) {
+              case 'S':
+                 elem = {type:'secret', x:x, y:y};
+                 elem.floor = true;
+                 break;
               case 'X':
                  elem = {type:'hole', x:x, y:y};
                  elem.floor = true;
@@ -159,6 +174,14 @@
      return elements;
    }
 
+   function getMap(index) {
+     var maps = document.getElementsByTagName("map");
+     if(index>=maps.length) {
+         return null;
+     }
+     return parseMap(maps[index].innerHTML)
+   }
+
    function addCircuit(elem,cell) {
       var circuit = parseInt(cell.charAt(1),16);
       if(circuit && !isNaN(circuit)) {
@@ -198,6 +221,7 @@
    var ctx = canvas.getContext('2d');
    var canvas2 = document.getElementById('controls-portrait');
    var ctx2 = canvas2.getContext ('2d');
+   var popDialog = document.getElementById('popDialog');
    var steps = 0;
    
 
@@ -219,8 +243,8 @@
         ctx.strokeStyle = "rgba(0, 0, 0, " + alpha + ")";
         ctx.lineWidth = cellSize/20;
         ctx.fillStyle="rgba(255, 255, 255, " + alpha + ")";
-        ctx.fillText(text,shift+ 3.7*cellSize - cellSize/5, 5*cellSize-cellSize/5);
-        ctx.strokeText(text,shift+ 3.7*cellSize - cellSize/5, 5*cellSize-cellSize/5);
+        ctx.fillText(text,shift+ 3.7*cellSize - cellSize/4, 5*cellSize-cellSize/5);
+        ctx.strokeText(text,shift+ 3.7*cellSize - cellSize/4, 5*cellSize-cellSize/5);
       }
    }
 
@@ -256,6 +280,43 @@
       }
    }
 
+   function drawPad () {
+         var unit = canvas2.width/50;
+         ctx2.clearRect (0,0,canvas2.width,canvas2.height);
+
+         var pt=[
+        {x:25*unit,y:10*unit},
+        {x:10*unit,y:25*unit},
+        {x:40*unit,y:25*unit},
+        {x:25*unit,y:40*unit}
+        ];
+
+         var ak=[38,37,39,40];
+        
+        
+        for (var i=0;i <pt.length;i++){
+           if (key [ak [i]]) {
+             ctx2.fillStyle = '#AAAAAA';
+             ctx2.beginPath ();
+             ctx2.moveTo (pt[i].x, pt[i].y);
+             ctx2.arc (pt[i].x, pt[i].y, 10*unit, 0, 2*Math.PI, true);
+             ctx2.fill ();
+           }
+         }
+        
+
+
+         ctx2.fillStyle = '#555555';
+         ctx2.beginPath ();
+         for (var i=0;i <pt.length;i++){
+           ctx2.moveTo (pt[i].x, pt[i].y);
+           ctx2.arc (pt[i].x, pt[i].y, 8*unit, 0, 2*Math.PI, true);
+         }
+         ctx2.fill ();
+
+        
+   }
+
    function refreshPad() {
        var retina = isRetina;
      
@@ -264,27 +325,19 @@
        document.getElementById("touchControls").style.display = is_touch_device() && portrait ?"":"none";
        document.getElementById("notouch").style.display = level<=1 && !is_touch_device()?"":"none";
        document.getElementById("controls-landscape").style.display = is_touch_device() && !portrait?"":"none";
+       document.getElementById("touchPadding").style.display = is_touch_device() ? "" : "none";
        canvas2 = document.getElementById(portrait?
           'controls-portrait':'controls-landscape');
-       canvas2.width = canvas2.height = scale* canvas.width/8*5;
-       ctx2 = canvas2.getContext ('2d');
+       if (canvas2.style.display!="none") {
+         canvas2.width = canvas2.height = scale* canvas.width/8*5;
+         ctx2 = canvas2.getContext ('2d');
+         drawPad ();
+      }
 
-       var unit = canvas2.width/50;
-       ctx2.fillStyle = '#555555';
-       ctx2.beginPath ();
-       ctx2.arc (25*unit, 10*unit, 8*unit, 0, 2*Math.PI, true);
-       ctx2.moveTo (10*unit,25*unit);
-       ctx2.arc (10*unit, 25*unit, 8*unit, 0, 2*Math.PI, true);
-       ctx2.moveTo (40*unit, 25*unit);
-       ctx2.arc (40*unit, 25*unit, 8*unit, 0, 2*Math.PI, true);
-       ctx2.moveTo (25*unit, 40*unit);
-       ctx2.arc (25*unit, 40*unit, 8*unit, 0, 2*Math.PI, true);
-       ctx2.fill ();
-
-       var restartButton = document.getElementById("restartButton");
-       restartButton.style.display = is_touch_device()?"":"none";
-       restartButton.style.left = restartButton.style.posLeft =
-          (window.innerWidth-restartButton.offsetWidth-20)+"px";
+      var restartButton = document.getElementById("restartButton");
+      restartButton.style.display = is_touch_device()?"":"none";
+      restartButton.style.left = restartButton.style.posLeft =
+            (window.innerWidth-restartButton.offsetWidth-2)+"px";
    }
 
    function refreshElems(elems) {
@@ -306,6 +359,7 @@
                refreshFloor(elems[i]);
                break;
             case 'hole':
+            case 'secret':
                refreshHole(elems[i]);
                break;
             case 'sign':
@@ -351,6 +405,9 @@
              boulder.x = Math.round(boulder.x);
              boulder.y = Math.round(boulder.y);
              checkConnect();
+             if(getElemsAt(boulder.x,boulder.y).some(function(elem){return elem.type=='secret';})) {
+                boulder.type=null;
+             }
           }
         } else {
           boulder.x += dx;
@@ -563,7 +620,7 @@
         }
 
         if(!hero.exit) {
-           var doors = getElemsAt(Math.round(hero.x),Math.round(hero.y)).filter(function(elem) {return elem.type=='door';});
+           var doors = getElemsAt(Math.round(hero.x),Math.round(hero.y)).filter(function(elem) {return elem.type=='door' || elem.type=='secret' || elem.letter;});
            if(doors.length>0) {
               hero.exit = lastRefresh;
            }
@@ -576,8 +633,8 @@
            ctx.ellipse(hero.x*cellSize + cellSize/2,hero.y*cellSize + (cellSize/2)*a + (cellSize-cellSize/3)*(1-a) + heroSize*a*.8,heroSize*a*.9,heroSize*a/3,0,0,Math.PI*2,true);
            ctx.fill();
         }
-        ctx.strokeStyle = 'rgb(200,150,30)';
-        ctx.fillStyle= 'rgb(240,240,30)';
+        ctx.strokeStyle = pink?'rgb(200,50,50)':'rgb(200,150,30)';
+        ctx.fillStyle= pink?'rgb(255,180,150)':'rgb(240,240,30)';
         ctx.lineWidth = heroSize/6;
         ctx.beginPath();
         ctx.arc(hero.x*cellSize + cellSize/2,hero.y*cellSize + (cellSize/2)*a + (cellSize-cellSize/3)*(1-a),heroSize*a,0,Math.PI*2,true);
@@ -598,13 +655,33 @@
 
         if(hero.exit && a==0 && !hero.out) {
             hero.out = true;
-            nextLevel();
+            var secrets = getElemsAt(Math.round(hero.x),Math.round(hero.y)).filter(function(elem) {return elem.type=='secret'||elem.letter;});
+            if(secrets.length) {
+               if(secrets[0].letter) {
+                  pink = !pink;
+                  setLevel(0);
+               } else {
+var xx = function(x){return new Array(x).join("X");};
+elems = parseMap(
+[xx(21),xx(21),xx(9)+'~'+String.fromCharCode(9731)+xx(11),
+ xx(9)+".."+xx(11),
+ xx(9)+".."+xx(11),
+ xx(9)+".."+xx(11),
+ xx(9)+".."+xx(11),
+ xx(9)+".."+xx(11),
+ xx(9)+".."+xx(11),
+ xx(9)+"^^"+xx(11)].join(String.fromCharCode(10))
+);
+
+               }
+            } else {
+               nextLevel();
+            }
         }
    }
 
    function nextLevel() {
-      level++;
-      setLevel(level);
+      setLevel(level+1);
       refreshPad();
 
       if(!elems) {
@@ -734,15 +811,19 @@
       return elem.connected;
    }
 
-  function is_touch_device() {
+  var cachedIsTouch =   function () {
      return (('ontouchstart' in window)
       || (navigator.MaxTouchPoints > 0)
       || (navigator.msMaxTouchPoints > 0));
+  }();
+  function is_touch_device() {
+     return cachedIsTouch;
   }
 
   function toggleSound() {
     sound = !sound;
-    setHash('mute',sound?null:1);
+    setHash('mute',sound && !banAudio?null:1);
+    document.getElementById('sounder').innerText = sound  && !banAudio? "SOUND ON":"SOUND OFF";
   }
 
    var bslash = String.fromCharCode(92);
@@ -794,6 +875,22 @@ function checkRetina (){
                 promptRestart();
             } else if(e.keyCode==83) { // S
                 toggleSound();
+            } else if(e.keyCode==80) { // P
+                if(popDialog.style.display=="" && level>=0) {
+                   setLevel(Math.max(level-1,0));
+                   popDialog.style.display = 'none';
+                }
+            } else if(e.keyCode==78) { // N
+                if(popDialog.style.display=="" && maxLevel>level) {
+                   var maps = document.getElementsByTagName("map");
+                   setLevel(Math.min(level+1,maps.length));
+                   popDialog.style.display = 'none';
+                }
+            } else if(e.keyCode==82) { // R
+                if(popDialog.style.display=="") {
+                   restart();
+                   popDialog.style.display = 'none';
+                }
             }
          }
          e.preventDefault();
@@ -811,25 +908,139 @@ function checkRetina (){
         {x:40*unit,y:25*unit},
         {x:25*unit,y:40*unit}
      ];
+     var closest, closeDist = 13*unit;
      for (var i=0;i <pt.length;i++) { 
         var dx=pt[i].x-x;
         var dy=pt[i].y-y;
         var dist=Math.sqrt(dx*dx+dy*dy);
-        if (dist <10*unit) {
-         key [ak [i]] =true;
+        if (dist < closeDist) {
+          closeDist = dist;
+          closest = ak [i];
         }
      }
+     var needsDraw = false;
+     for (var i=0;i <ak.length;i++) {
+        var k = ak [i];
+        var bedown = k == closest;
+        if (key [k] != bedown)  {
+           key [k] = bedown;
+           needsDraw = true;
+        }
+     }
+     if (needsDraw) drawPad ();
+     
+     
+     e.preventDefault ();
    }
+   function touchMove (e) {
+     e.preventDefault ();
+      touchMe (e);
+      
+   }
+    
    document.addEventListener('touchend',function(e) {
        key[37]=key[38]=key[39]=key[40]=false;
+       drawPad ();
+       if(popDialog.style.display!='none') {
+          popDialog.style.display = 'none';
+       }
    });
+   if(!is_touch_device()) {
+   document.addEventListener('click',function(e) {
+       if(popDialog.style.display!='none') {
+          popDialog.style.display = 'none';
+       }
+   });
+   }
+
 document.getElementById('controls-portrait').addEventListener('touchstart',touchMe);
 document.getElementById('controls-landscape').addEventListener('touchstart',touchMe);
+document.getElementById('controls-portrait').addEventListener('touchmove',touchMove);
+document.getElementById('controls-landscape').addEventListener('touchmove',touchMove);
+
 document.getElementById("restartButton").addEventListener('touchend',
    function(e) {
       promptRestart();
+      e.stopPropagation();
    });
-   
+
+document.getElementById("popDialog").addEventListener('touchmove',popOver);
+document.getElementById("popDialog").addEventListener('touchstart',popOver);
+document.getElementById("popDialog").addEventListener('touchend',popSelect);
+document.getElementById("popDialog").addEventListener('click',popSelect);
+
+function popOver(e) {
+     var tar=e.targetTouches[0];
+
+      var target = document.elementFromPoint(tar.pageX,tar.pageY);
+      resetHeaders(target);
+      e.stopPropagation();
+      e.preventDefault();
+}
+
+function resetHeaders(target) {
+      var shortCut = !is_touch_device();
+      var headers = popDialog.getElementsByTagName('H1');
+      for(var i=0;i<headers.length;i++) {
+         if(shortCut) {
+            headers[i].innerText = headers[i].textContent;
+         }
+
+         if(headers[i].textContent=="PREVIOUS LEVEL" && level==0) {
+             headers[i].style.backgroundColor="#AAAAAA";
+             headers[i].style.color = "#999999";
+         } else if(headers[i].textContent=="NEXT LEVEL" && level==maxLevel) {
+             headers[i].style.backgroundColor="#AAAAAA";
+             headers[i].style.color = "#999999";
+         } else if(headers[i]===target) {
+             headers[i].style.backgroundColor="#CCCCCC";
+             headers[i].style.color = "black";
+         } else {
+             headers[i].style.backgroundColor="";
+             headers[i].style.color = "";
+             if(shortCut) {
+               headers[i].innerHTML = 
+                "<font color='yellow'>"+headers[i].textContent.charAt(0)+"</font>"+headers[i].textContent.substr(1);
+             }
+         }
+      }
+}
+
+   function popSelect(e) {
+      switch(e.target.textContent) {
+         case "RESTART LEVEL":
+            restart();
+            popDialog.style.display = 'none';
+            break;
+         case "PREVIOUS LEVEL":
+            if(level>0) {
+               setLevel(Math.max(level-1,0));
+               popDialog.style.display = 'none';
+            }
+            break;
+         case "NEXT LEVEL":
+            if(maxLevel>level) {
+               var maps = document.getElementsByTagName("map");
+               setLevel(Math.min(level+1,maps.length));
+               popDialog.style.display = 'none';
+            }
+            break;
+         case "SOUND ON":
+            sound = false;
+            e.target.innerText = "SOUND OFF";
+            setHash('mute',sound && !banAudio?null:1);
+            break;
+         case "SOUND OFF":
+            sound = true;
+            e.target.innerText = "SOUND ON";
+            setHash('mute',sound && !banAudio?null:1);
+            break;
+      }
+      resetHeaders();
+      e.preventDefault();
+      e.stopPropagation();
+   }
+
 function getHashLevel() {
      var lvl = getHash('level');
       var maps = document.getElementsByTagName("map");
@@ -843,15 +1054,21 @@ function getHashLevel() {
       resize();
       if(getHash('mute')!==null) {
          sound = getHash('mute')!="1";
+         document.getElementById('sounder').innerText = sound  && !banAudio? "SOUND ON":"SOUND OFF";
       }
       var lvl = getHashLevel();
       if(level!=lvl) {
          setLevel(lvl);
       }
    });
-   resize(); 
-   level = getHashLevel();
-   restart();
-   playMusic();
+   function initialize() {
+     resize(); 
+     level = getHashLevel();
+     restart();
+     sound = getHash('mute')!="1";
+     document.getElementById('sounder').innerText = sound  && !banAudio ? "SOUND ON":"SOUND OFF";
 
+     canvas.style.display = "";
+   }
+document.addEventListener("DOMContentLoaded", initialize);
 

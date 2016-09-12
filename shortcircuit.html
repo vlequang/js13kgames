@@ -16,23 +16,35 @@ body {
    -ms-user-select: none;
    user-select: none;
 }
+
+H1 {
+  padding: 30px 20px 30px 20px;
+  font-family: Roboto Black, Arial Black;
+}
+H1:hover {
+  background-color: #BBBBBB;
+  color: black;
+}
 </style>
 <meta name="viewport" content="user-scalable=no"/> <!--320-->
 </head>
 <body unselectable="on" class="unselectable" style="color:white;overflow:hidden;background-color:black">
 <div align="center">
    <br><nobr>
-   <canvas id="view" width=600" height="600" style="background-color:#eeeeee"></canvas>
-   <canvas id="controls-landscape" width="500" height="500" style="display:none;background-color:#222222"></canvas>
+   <canvas id="view" width=600" height="600" style="background-color:#eeeeee;display:none"></canvas>
+   <canvas id="controls-landscape" width="500" height="500" style="margin-left:100px;display:none;background-color:#222222"></canvas>
    </nobr>
-   <div id='notouch' style="display:none"><font face='Courier'>Arrow keys to Move, ESC to restart level, S to toggle Sound</font></div>
+   <div id='notouch' style="display:none"><font face='Courier'>Arrow keys to Move, ESC for Options, S to toggle Sound</font></div>
 </div>
 <div id="touchControls" align="center" style="display:none">
    <br><br>
    <div style="width:100%;background-color:#222222">
       <canvas id="controls-portrait" width="500" height="500" style="background-color:#222222"></canvas>
    </div>
-   <br><br><br><br><br> <br><br>
+   <br><br><br><br><br> 
+</div>
+<div id="touchPadding" style="display:none">
+   <br><br>
 </div>
 <maps style="display:none">
   <map>
@@ -84,10 +96,10 @@ XXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXX
   </map>
   <map>
-XXXXXXE8XXXXXXXXXXXX
-XXXX..FAXXXXXXXXXXXX
-XXXX..RA..RA..XXXXXX
-XXXX..XA....^^XXXXXX
+XXXXXXE8XXSXXXXXXXXX
+XXXX..FAXX..XXXXXXXX
+XXXX..RA..RA....XXXX
+XXXX..XA....^^..XXXX
 XXXX..XAXXXXD8XXXXXX
 XX....RA......XXXXXX
 XX....F6X5X5X3XXXXXX
@@ -180,7 +192,7 @@ XXFAXXXXXXXXXXXXFAXX
 XX....XXXXXXXX....XX
   </map>
   <map>
-XX................XX
+XX................SX
 ..X8..X8....X8..X8..
 ..X6XDX3XCX9XA..XA..
 ....X2..X6X3X6X5X3..
@@ -193,7 +205,24 @@ XX................XX
   </map>
 </maps>
 <div id="restartButton" style="display:none;position:absolute; posTop:0px; posLeft:0px; top:0px; left:0px">
-   <h2>RESTART</h2>
+  <svg width="100" height="100">
+    <circle cx="50" cy="50" r="15" stroke="#CCCCCC" stroke-width="30" fill="#000000" />
+    <line x1="40" y1="40" x2="21" y2="21" style="stroke:#CCCCCC;stroke-width:15" />
+    <line x1="60" y1="60" x2="79" y2="79" style="stroke:#CCCCCC;stroke-width:15" />
+    <line x1="40" y1="60" x2="21" y2="79" style="stroke:#CCCCCC;stroke-width:15" />
+    <line x1="60" y1="40" x2="79" y2="21" style="stroke:#CCCCCC;stroke-width:15" />
+    <line x1="50" y1="25" x2="50" y2="10" style="stroke:#CCCCCC;stroke-width:15" />
+    <line x1="25" y1="50" x2="10" y2="50" style="stroke:#CCCCCC;stroke-width:15" />
+    <line x1="50" y1="75" x2="50" y2="90" style="stroke:#CCCCCC;stroke-width:15" />
+    <line x1="75" y1="50" x2="90" y2="50" style="stroke:#CCCCCC;stroke-width:15" />
+    <circle cx="50" cy="50" r="15" stroke="#666666" stroke-width="15" />
+  </svg>
+</div>
+<div id="popDialog" align="center" style="display:none; position:absolute; background-color:#AAAAAA; posTop:0px; posLeft: 0px; top:0px; left:0px;width:400px;box-shadow: 10px 10px 0px #333333;">
+   <H1>RESTART LEVEL</H1>
+   <H1>PREVIOUS LEVEL</H1>
+   <H1>NEXT LEVEL</H1>
+   <H1 id='sounder'>SOUND ON</H1>
 </div>
 
 <script src="shortcircuit.js"></script>
